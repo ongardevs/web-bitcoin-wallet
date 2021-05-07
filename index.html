@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Jabyq Wallet - Testnet Wallet for Bitcoin & Litecoin</title>
+	<link rel="stylesheet" type="text/css" href="css/semantic.min.css">
+	<link rel="stylesheet" type="text/css" href="css/style.css">
+	<script src="js/jquery-3.2.1.min.js"></script>
+	<script src="js/moment.js"></script>
+	<script src="js/livestamp.js"></script>
+	<script src="js/semantic.min.js"></script>
+	<script src="js/bitcoinjs.min.js"></script>
+</head>
+
+<body>
+	<div id="app">
+		<div id="sidebar" class="ui sidebar inverted vertical menu visible">
+			<div class="item">
+				<br/>
+				<img class="ui centered image" src="resources/icon.png">
+				<div class="ui inverted centered header">Jabyq Wallet</div>
+			</div>
+			<div class="item">
+				<strong>Что такое кошелек Jabyq?</strong>
+				<br/>Веб-кошелек для легкого доступа к тестовым сетям Биткойн и Лайткойн. Добавьте этот URL-адрес в закладки, если хотите снова получить доступ к тому же кошельку.
+			</div>
+			<div class="item">
+				<div class="four ui buttons">
+					<button :class="color" class="ui basic small icon button" data-tooltip="Create new address" data-position="top left" @click="init(current)">
+						<i class="plus icon"></i>
+					</button>
+					<button :class="color" class="ui basic small icon button" data-tooltip="Switch Currency" @click="switchCurrency();">
+						<i class="exchange icon"></i>
+					</button>
+					<button :class="color" class="ui basic top left pointing small dropdown icon button" data-tooltip="Change Fiat Currency">
+						<i class="money icon"></i>
+						<div class="menu">
+							<div class="divider"></div>
+							<div class="header">
+								Фиат
+							</div>
+							<div class="item" v-for="symbol, code in currencies" @click="updateFiat(code)">
+								{{ symbol }} {{ code }}
+							</div>
+						</div>
+					</button>
+					<a href="https://github.com/jabyqlab" :class="color" class="ui basic small icon button" data-tooltip="View Source" data-position="top right">
+						<i class="github alternate icon"></i>
+					</a>
+				</div>
+			</div>
+			<div class="item">
+				Нужны монеты тестовой сети?
+			</div>
+			<a class="item" :href="faucet[1]" v-for="faucet in faucets" target="_blank">
+				{{ faucet[0] }}
+			</a>
+		</div>
+		<div id="horizontal" class="ui inverted menu">
+			<div class="item">
+				<div class="ui inverted header">Jabyq Wallet</div>
+				<div class="ui four buttons">
+					<button :class="color" class="ui basic medium icon button" data-tooltip="Create new address" data-position="bottom left" @click="init(current)">
+						<i class="large plus icon"></i>
+					</button>
+					<button :class="color" class="ui basic medium icon button" data-tooltip="Switch Currency" data-position="bottom left" @click="switchCurrency();">
+						<i class="large exchange icon"></i>
+					</button>
+					<button :class="color" class="ui basic pointing medium dropdown icon button" data-tooltip="Change Fiat Currency" data-position="bottom left">
+						<i class="large money icon"></i>
+						<div class="menu">
+							<div class="divider"></div>
+							<div class="header">
+								Фиат
+							</div>
+							<div class="item" v-for="symbol, code in currencies" @click="updateFiat(code)">
+								{{ symbol }} {{ code }}
+							</div>
+						</div>
+					</button>
+					<button :class="color" class="ui basic pointing medium dropdown icon button" data-tooltip="Get coins" data-position="bottom left">
+						<i class="large external link icon"></i>
+						<div class="menu">
+							<div class="divider"></div>
+							<div class="header">
+								Faucets
+							</div>
+							<a class="item" :href="faucet[1]" v-for="faucet in faucets" target="_blank">
+								{{ faucet[0] }}
+							</a>
+						</div>
+					</button>
+				</div>
+			</div>
+		</div>
+		<div class="pusher">
+			<div class="ui inverted teal vertical masthead center aligned segment" id="price-header">
+				<div class="price">
+					<h1>{{ amount }}</h1>
+					<h2>{{ fiat_amount }}</h2>
+					<button :class="color" class="ui button" @click="showModal()">
+						<i class="send outline icon"></i>
+						Отправить
+					</button>
+					<button :class="color" class="ui button" @click="copyAddress()">
+						<i class="copy icon"></i>
+						Копировать адрес
+					</button>
+					<h3>{{ address }}</h3>
+				</div>
+			</div>
+			<div class="ui center aligned container" id="transactions">
+				<h2>Транзакции</h2>
+				<table class="ui very basic compact stackable table">
+					<thead>
+						<tr>
+							<th></th>
+							<th>Время</th>
+							<th>ID транзакции</th>
+							<th>Сумма</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="tx in transactions">
+							<td v-if="tx.vin[0].addr == address">
+								<i class="medium circular inverted red arrow right icon"></i>
+								<i v-if="tx.confirmations < 1" class="medium hourglass start icon">
+							</td>
+							<td v-else>
+								<i class="medium circular inverted green arrow left icon"></i>
+								<i v-if="tx.confirmations < 1" class="medium hourglass start icon">
+							</td>
+							<td><span :data-livestamp="tx.time"></span></td>
+							<td><a :href="baseURL + '/tx/' + tx.txid" target="_blank">{{ tx.txid }}</a></td>
+							<td v-if="tx.vin[0].addr == address" class="negative">-{{ tx.vout[0].value }} {{ symbol }}</td>
+							<td v-else class="positive">+{{ getOutputValue(tx.vout) }} {{ symbol }}</td>
+						</tr>
+				  </tbody>
+			</table>
+			</div>
+			<audio id="audio" src="resources/ding.wav" preload="auto"></audio>
+		</div>
+		<div class="ui modal">
+			<div class="header">Отправить монеты</div>
+			<div class="content">
+				<div class="ui form">
+					<div class="field">
+						<label>Сумма (комиссия майнера 0,001 вычитается из вашего баланса)</label>
+						<div class="ui action input">
+						  <input id="send-amount" placeholder="Amount..." type="number">
+						  <button class="ui button" @click="maxAmount()">Максимальная сумма</button>
+						</div>
+					</div>
+					<div class="field">
+						<label>Адрес получателя</label>
+						<input id="receive-address" placeholder="Address" type="text">
+					</div>
+					<button :class="color" class="ui button" id="send-button" @click="sendTransaction()">
+					  Отправить
+					</button>
+					<button class="ui deny button" onclick="$('.modal').modal('hide');">
+					  Отменить
+					</button>
+					<div v-if="msg.title" :class="msg.status" class="ui message">
+						<div class="header">{{ msg.title }}</div>
+						<p>{{ msg.reason }}</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+<script src="js/vue.min.js"></script>
+<script src="js/script.js"></script>
+</html>
